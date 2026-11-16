@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="system">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light dark" />
+<title>ブックマーク → インポート用HTML変換</title>
+<style>
+  :root, [data-theme="light"] {
+    color-scheme: light;
+    --bg:#f6f7f9; --surface:#fff; --text:#1a1d21; --muted:#5c6570;
+    --border:#d0d5dc; --border-strong:#b8c0ca; --th-bg:#eef1f5;
+    --input-bg:#fff; --btn-bg:#fff; --btn-hover:#eef1f5;
+    --primary:#1a56db; --primary-text:#fff; --primary-hover:#1648b8;
+    --pre-bg:#f0f2f5; --error:#c62828; --ok:#1b7a3d;
+    --shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+    --focus:#1a56db; --chip-bg:#fff; --chip-hover:#e8edf5;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg:#0f1218; --surface:#1a1f29; --text:#e8eaed; --muted:#9aa3b2;
+    --border:#2e3644; --border-strong:#3d4758; --th-bg:#222833;
+    --input-bg:#141820; --btn-bg:#222833; --btn-hover:#2c3442;
+    --primary:#3b82f6; --primary-text:#fff; --primary-hover:#2563eb;
+    --pre-bg:#141820; --error:#f87171; --ok:#4ade80;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.35);
+    --focus:#60a5fa; --chip-bg:#222833; --chip-hover:#2c3442;
+  }
+  @media (prefers-color-scheme: dark) {
+    [data-theme="system"] {
+      color-scheme: dark;
+      --bg:#0f1218; --surface:#1a1f29; --text:#e8eaed; --muted:#9aa3b2;
+      --border:#2e3644; --border-strong:#3d4758; --th-bg:#222833;
+      --input-bg:#141820; --btn-bg:#222833; --btn-hover:#2c3442;
+      --primary:#3b82f6; --primary-text:#fff; --primary-hover:#2563eb;
+      --pre-bg:#141820; --error:#f87171; --ok:#4ade80;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.35);
+      --focus:#60a5fa; --chip-bg:#222833; --chip-hover:#2c3442;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,system-ui,sans-serif;
+    max-width:920px;margin:0 auto;padding:1.5rem 1rem 4rem;line-height:1.6;
+    background:var(--bg);color:var(--text);min-height:100vh;
+  }
+  .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+  h1{font-size:1.35rem;margin:0 0 .25rem;font-weight:700;letter-spacing:.01em}
+  p.lead{margin:0;color:var(--muted);font-size:.88rem}
+  .theme-toggle{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow);flex-shrink:0}
+  .theme-toggle button{border:none;background:transparent;color:var(--muted);font-size:.78rem;padding:.4rem .65rem;cursor:pointer;line-height:1.2}
+  .theme-toggle button+button{border-left:1px solid var(--border)}
+  .theme-toggle button:hover{background:var(--btn-hover);color:var(--text)}
+  .theme-toggle button[aria-pressed="true"]{background:var(--primary);color:var(--primary-text)}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-top:1.2rem;box-shadow:var(--shadow)}
+  .tabs{display:flex;gap:.25rem;border-bottom:1px solid var(--border);margin-bottom:1rem}
+  .tabs button{border:none;background:transparent;color:var(--muted);font-size:.92rem;padding:.5rem .9rem;border-radius:8px 8px 0 0;border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer}
+  .tabs button:hover{color:var(--text);background:var(--btn-hover)}
+  .tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--primary);font-weight:600}
+  .drop{border:2px dashed var(--border-strong);border-radius:10px;padding:1.8rem 1rem;text-align:center;background:var(--input-bg);transition:border-color .15s,background .15s}
+  .drop.over{border-color:var(--primary);background:var(--btn-hover)}
+  .drop p{margin:0 0 .6rem;font-size:.92rem}
+  .drop small{display:block;margin-top:.6rem;color:var(--muted);font-size:.78rem}
+  button{font-size:.92rem;padding:.55rem 1.05rem;cursor:pointer;border:1px solid var(--border-strong);border-radius:8px;background:var(--btn-bg);color:var(--text)}
+  button:hover{background:var(--btn-hover)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.primary{background:var(--primary);color:var(--primary-text);border-color:transparent;font-weight:600}
+  button.primary:hover{background:var(--primary-hover)}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  textarea,input[type=text],select{font-family:inherit;font-size:.92rem;padding:.55rem .75rem;border:1px solid var(--border-strong);border-radius:8px;background:var(--input-bg);color:var(--text);width:100%}
+  textarea{min-height:11rem;resize:vertical;line-height:1.55}
+  .row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+  .hint{font-size:.8rem;color:var(--muted);margin:.7rem 0 0}
+  .stats{display:flex;gap:.5rem;flex-wrap:wrap;margin:0 0 1rem}
+  .stat{flex:1 1 110px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:.5rem .7rem}
+  .stat .k{font-size:.72rem;color:var(--muted)}
+  .stat .v{font-size:1.15rem;font-weight:700}
+  .opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.7rem;margin-bottom:1rem}
+  .opt label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.25rem}
+  .chk{display:flex;align-items:center;gap:.45rem;font-size:.85rem;margin-top:.35rem}
+  .chk input{width:1rem;height:1rem;accent-color:var(--primary)}
+  .actions{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;padding-top:.2rem}
+  .filename{flex:1 1 240px;min-width:180px}
+  pre{background:var(--pre-bg);color:var(--text);border:1px solid var(--border);padding:.9rem;border-radius:8px;overflow:auto;font-size:.78rem;line-height:1.45;margin:0;max-height:22rem}
+  .tree{font-size:.85rem;max-height:20rem;overflow:auto;border:1px solid var(--border);border-radius:8px;padding:.7rem .9rem;background:var(--input-bg)}
+  .tree ul{list-style:none;margin:0;padding-left:1rem}
+  .tree>ul{padding-left:0}
+  .tree li{margin:.15rem 0}
+  .tree .f{font-weight:600}
+  .tree .f::before{content:"📁 ";}
+  .tree a{color:var(--primary);text-decoration:none;word-break:break-all}
+  .tree a:hover{text-decoration:underline}
+  .tree .n{color:var(--muted);font-size:.75rem;margin-left:.4rem}
+  summary{cursor:pointer;font-size:.85rem;color:var(--muted);margin:.9rem 0 .5rem}
+  .msg{font-size:.85rem;margin:.6rem 0 0;color:var(--muted)}
+  .msg.err{color:var(--error);font-weight:600}
+  .msg.ok{color:var(--ok)}
+  details.guide{margin-top:.4rem}
+  details.guide summary{font-size:.88rem;color:var(--text);font-weight:600}
+  .guide table{border-collapse:collapse;width:100%;font-size:.82rem;margin:.5rem 0}
+  .guide th,.guide td{border:1px solid var(--border);padding:.4rem .55rem;text-align:left;vertical-align:top}
+  .guide th{background:var(--th-bg);white-space:nowrap}
+  code{background:var(--pre-bg);padding:.1rem .35rem;border-radius:4px;font-size:.82em;word-break:break-all}
+  footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)}
+  footer a{color:var(--primary)}
+  @media (max-width:560px){.topbar{flex-direction:column}.theme-toggle{align-self:flex-end}h1{font-size:1.2rem}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>ブックマーク → インポート用HTML</h1>
+    <p class="lead">Chrome / Edge / Firefox / Safari のブックマークを、どのブラウザでも読み込める Netscape 形式 HTML に変換します（ブラウザ内で完結・送信なし）</p>
+  </div>
+  <div class="theme-toggle" role="group" aria-label="表示テーマ">
+    <button type="button" data-theme-set="light">ライト</button>
+    <button type="button" data-theme-set="dark">ダーク</button>
+    <button type="button" data-theme-set="system">自動</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" id="tab-file" aria-selected="true" aria-controls="panel-file">ファイルから</button>
+    <button type="button" role="tab" id="tab-text" aria-selected="false" aria-controls="panel-text">テキストから</button>
+  </div>
+
+  <section id="panel-file" role="tabpanel" aria-labelledby="tab-file">
+    <div class="drop" id="drop">
+      <p>ブックマークファイルをここにドロップ</p>
+      <button type="button" class="primary" id="pick">ファイルを選択</button>
+      <input type="file" id="file" multiple hidden />
+      <small>拡張子なしの <code>Bookmarks</code>、<code>.jsonlz4</code>、<code>Bookmarks.plist</code>、HTML、CSV/TSV、Markdown、URLリストに対応（複数可・自動判別）</small>
+    </div>
+    <p class="hint">Chrome / Edge は <code>Bookmarks</code>（拡張子なし）をそのまま選べます。Windows の場所: <code>%LOCALAPPDATA%\Google\Chrome\User Data\Default\Bookmarks</code> / <code>%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Bookmarks</code></p>
+    <div id="file-msg" class="msg" aria-live="polite"></div>
+  </section>
+
+  <section id="panel-text" role="tabpanel" aria-labelledby="tab-text" hidden>
+    <textarea id="ta" placeholder="URLリスト、Markdown、CSV/TSV、OneTab の貼り付け、または Netscape 形式 HTML をそのまま貼り付け"></textarea>
+    <div class="row" style="margin-top:.6rem">
+      <button type="button" class="primary" id="parse-text">変換する</button>
+      <button type="button" id="clear-text">クリア</button>
+    </div>
+    <div id="text-msg" class="msg" aria-live="polite"></div>
+  </section>
+</div>
+
+<div class="card" id="result" hidden>
+  <div class="stats" id="stats"></div>
+
+  <div class="opts">
+    <div class="opt">
+      <label for="structure">フォルダ構造</label>
+      <select id="structure">
+        <option value="keep">そのまま保持</option>
+        <option value="wrap">1つのフォルダにまとめる</option>
+        <option value="flat">フォルダを外して平坦化</option>
+      </select>
+    </div>
+    <div class="opt" id="wrap-name-wrap" hidden>
+      <label for="wrap-name">まとめるフォルダ名</label>
+      <input type="text" id="wrap-name" />
+    </div>
+    <div class="opt">
+      <label for="dedupe">重複URL</label>
+      <select id="dedupe">
+        <option value="none">そのまま残す</option>
+        <option value="folder">フォルダ内で除去</option>
+        <option value="global">全体で除去</option>
+      </select>
+    </div>
+    <div class="opt">
+      <label>オプション</label>
+      <div class="chk"><input type="checkbox" id="opt-empty" checked /><span>空フォルダを省く</span></div>
+      <div class="chk"><input type="checkbox" id="opt-dates" checked /><span>追加日時を残す</span></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="primary" id="download">HTMLをダウンロード</button>
+    <button type="button" id="copy">HTMLをコピー</button>
+    <input type="text" id="filename" class="filename" />
+    <button type="button" id="reset">リセット</button>
+  </div>
+  <div id="out-msg" class="msg" aria-live="polite"></div>
+
+  <details>
+    <summary>ツリーを確認（最初の300件まで表示）</summary>
+    <div class="tree" id="tree"></div>
+  </details>
+  <details>
+    <summary>生成されたHTML（先頭のみ表示）</summary>
+    <pre id="html-preview"></pre>
+  </details>
+</div>
+
+<div class="card">
+  <details class="guide">
+    <summary>インポート手順とファイルの場所</summary>
+    <table>
+      <tr><th>ブラウザ</th><th>インポート</th><th>元ファイルの場所</th></tr>
+      <tr><td>Chrome</td><td>ブックマークマネージャ（Ctrl+Shift+O）→ 右上「⋮」→ ブックマークをインポート</td><td><code>%LOCALAPPDATA%\Google\Chrome\User Data\Default\Bookmarks</code></td></tr>
+      <tr><td>Edge</td><td>お気に入りの管理（Ctrl+Shift+O）→ 「…」→ お気に入りのインポート</td><td><code>%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Bookmarks</code></td></tr>
+      <tr><td>Firefox</td><td>ライブラリ（Ctrl+Shift+O）→ インポートとバックアップ → ブックマークを HTML からインポート</td><td><code>bookmarks-YYYY-MM-DD.jsonlz4</code>（バックアップ）</td></tr>
+      <tr><td>Safari</td><td>ファイル → ブックマークを読み込む</td><td><code>~/Library/Safari/Bookmarks.plist</code></td></tr>
+    </table>
+    <p class="hint">Chrome / Edge / Firefox は Netscape 形式 HTML を共通で読み込めます。ブックマークレット（<code>javascript:</code>）と内部URL（<code>chrome:</code> など）は、そのままでは他ブラウザで動かないため内部URLは自動的に除外します。</p>
+  </details>
+</div>
+
+<footer>
+  すべての処理はブラウザ内で完結します（ファイルはアップロードされません）。出力は UTF-8・BOMなしの Netscape Bookmark File 形式です。
+</footer>
+
+<script src="engine.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---- theme ---- */
+  var KEY = 'bk2html-theme';
+  var themeBtns = document.querySelectorAll('[data-theme-set]');
+  function applyTheme(t) {
+    var next = ['light', 'dark', 'system'].indexOf(t) >= 0 ? t : 'system';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem(KEY, next); } catch (e) {}
+    themeBtns.forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.themeSet === next ? 'true' : 'false');
+    });
+  }
+  var saved = 'system';
+  try { saved = localStorage.getItem(KEY) || 'system'; } catch (e) {}
+  applyTheme(saved);
+  themeBtns.forEach(function (b) {
+    b.addEventListener('click', function () { applyTheme(b.dataset.themeSet); });
+  });
+
+  /* ---- tabs ---- */
+  document.querySelectorAll('.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.tabs button').forEach(function (x) {
+        var on = x === b;
+        x.setAttribute('aria-selected', on ? 'true' : 'false');
+        $(x.getAttribute('aria-controls')).hidden = !on;
+      });
+    });
+  });
+
+  var files = [];       // {name, buffer}
+
+  function setMsg(el, text, cls) {
+    el.textContent = text || '';
+    el.className = 'msg' + (cls ? ' ' + cls : '');
+  }
+
+  function readAsBuffer(file) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onload = function () { resolve(new Uint8Array(r.result)); };
+      r.onerror = function () { reject(new Error('読み込みに失敗しました')); };
+      r.readAsArrayBuffer(file);
+    });
+  }
+
+  function labelFor(file, fmt) {
+    var n = file.name || '';
+    if (/bookmarks$/i.test(n) && !/\./.test(n)) return 'ブックマーク';
+    if (/jsonlz4$/i.test(n)) return 'Firefox';
+    if (/plist$/i.test(n)) return 'Safari';
+    return fmt || n.replace(/\.[^.]+$/, '') || 'インポート';
+  }
+
+  function addFiles(list) {
+    var picked = Array.prototype.slice.call(list || []);
+    if (!picked.length) return;
+    Promise.all(picked.map(readAsBuffer)).then(function (bufs) {
+      picked.forEach(function (f, i) { files.push({ name: f.name, buffer: bufs[i] }); });
+      setMsg($('file-msg'), picked.length + ' 件を読み込みました。変換しています…');
+      run();
+    }).catch(function (e) {
+      setMsg($('file-msg'), e.message, 'err');
+    });
+  }
+
+  var drop = $('drop');
+  $('pick').addEventListener('click', function (e) { e.stopPropagation(); $('file').click(); });
+  drop.addEventListener('click', function (e) { if (e.target.tagName !== 'BUTTON') $('file').click(); });
+  $('file').addEventListener('change', function (e) { addFiles(e.target.files); e.target.value = ''; });
+  ['dragenter', 'dragover'].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (t) {
+    drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+  });
+
+  /* ---- text input ---- */
+  $('parse-text').addEventListener('click', function () {
+    var text = $('ta').value;
+    if (!text.trim()) { setMsg($('text-msg'), 'テキストが空です', 'err'); return; }
+    var enc = new TextEncoder();
+    files.push({ name: 'pasted.txt', buffer: enc.encode(text) });
+    setMsg($('text-msg'), '変換しています…');
+    run();
+  });
+  $('clear-text').addEventListener('click', function () {
+    $('ta').value = '';
+    setMsg($('text-msg'), '');
+  });
+
+  var state = { tree: [], formatList: [] };
+
+  function build() {
+    var structure = $('structure').value;
+    var opts = {
+      dedupe: $('dedupe').value,
+      dropEmpty: $('opt-empty').checked,
+      keepDates: $('opt-dates').checked
+    };
+    var tree = state.tree;
+    if (structure === 'flat') tree = BK.flatten(tree);
+    if (structure === 'wrap') {
+      var name = $('wrap-name').value.trim() || defaultWrapName();
+      tree = [{ t: 'f', n: name, c: tree }];
+    }
+    return { html: BK.buildNetscape(tree, opts), opts: opts, tree: tree };
+  }
+
+  function defaultWrapName() {
+    var d = new Date();
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' インポート';
+  }
+
+  function run() {
+    if (!files.length) return;
+    var out = [];
+    var formats = [];
+    var errors = [];
+    var total = 0;
+
+    files.forEach(function (f) {
+      try {
+        var r = BK.parseBuffer(f.buffer, f.name);
+        var c = BK.count(r.nodes);
+        if (!c.links) return;
+        formats.push(r.format);
+        total += c.links;
+        out.push({ name: labelFor(f, r.format), nodes: r.nodes });
+      } catch (e) {
+        errors.push(f.name + ': ' + e.message);
+      }
+    });
+
+    if (!out.length) {
+      setMsg($('file-msg'), 'ブックマークを1件も読み取れませんでした。' + (errors.length ? ' ' + errors.join(' / ') : ''), 'err');
+      setMsg($('text-msg'), 'ブックマークを1件も読み取れませんでした。', 'err');
+      return;
+    }
+
+    var merged = [];
+    if (out.length === 1) {
+      merged = out[0].nodes;
+    } else {
+      out.forEach(function (o) {
+        merged.push({ t: 'f', n: o.name, c: o.nodes });
+      });
+    }
+
+    state.tree = merged;
+    state.formatList = formats;
+
+    $('result').hidden = false;
+    if (!$('filename').value) $('filename').value = 'bookmarks_' + ymd() + '.html';
+    if ($('structure').value === 'wrap' && !$('wrap-name').value) $('wrap-name').value = defaultWrapName();
+
+    render();
+    setMsg($('file-msg'), total + ' 件のブックマークを読み取りました（' + formats.join(' / ') + '）' + (errors.length ? ' ※ ' + errors.join(' / ') : ''), errors.length ? 'err' : 'ok');
+    setMsg($('text-msg'), total + ' 件を読み取りました', 'ok');
+  }
+
+  function ymd() {
+    var d = new Date();
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate());
+  }
+
+  function render() {
+    var built = build();
+    var c = BK.count(built.tree);
+
+    var stats = [
+      ['形式', state.formatList.join(' / ') || '—'],
+      ['ブックマーク', String(c.links)],
+      ['フォルダ', String(c.folders)],
+      ['読み取り元', String(files.length)]
+    ];
+    $('stats').innerHTML = stats.map(function (s) {
+      return '<div class="stat"><div class="k">' + s[0] + '</div><div class="v">' + BK.esc(s[1]) + '</div></div>';
+    }).join('');
+
+    $('html-preview').textContent = built.html.slice(0, 4000) + (built.html.length > 4000 ? '\n…' : '');
+
+    var treeEl = $('tree');
+    treeEl.innerHTML = '';
+    var shown = { n: 0 };
+    treeEl.appendChild(renderList(built.tree, shown));
+  }
+
+  function renderList(nodes, shown) {
+    var ul = document.createElement('ul');
+    for (var i = 0; i < nodes.length; i++) {
+      if (shown.n > 300) break;
+      var n = nodes[i];
+      var li = document.createElement('li');
+      if (n.t === 'f') {
+        shown.n++;
+        var c = BK.count(n.c);
+        var sp = document.createElement('span');
+        sp.className = 'f';
+        sp.textContent = n.n;
+        li.appendChild(sp);
+        var cnt = document.createElement('span');
+        cnt.className = 'n';
+        cnt.textContent = '(' + c.links + ')';
+        li.appendChild(cnt);
+        if (n.c.length) li.appendChild(renderList(n.c, shown));
+      } else {
+        shown.n++;
+        var safe = /^(https?|ftp|mailto|file):/i.test(n.u);
+        if (safe) {
+          var a = document.createElement('a');
+          a.href = n.u;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = n.n;
+          li.appendChild(a);
+        } else {
+          var t = document.createElement('span');
+          t.textContent = n.n;
+          li.appendChild(t);
+        }
+      }
+      ul.appendChild(li);
+    }
+    if (shown.n > 300) {
+      var more = document.createElement('li');
+      more.className = 'n';
+      more.textContent = '…以下省略';
+      ul.appendChild(more);
+    }
+    return ul;
+  }
+
+  /* ---- options ---- */
+  $('structure').addEventListener('change', function () {
+    $('wrap-name-wrap').hidden = $('structure').value !== 'wrap';
+    render();
+  });
+  ['dedupe', 'opt-empty', 'opt-dates'].forEach(function (id) {
+    $(id).addEventListener('change', render);
+  });
+  $('wrap-name').addEventListener('input', render);
+
+  /* ---- outputs ---- */
+  function currentHtml() { return build().html; }
+
+  $('download').addEventListener('click', function () {
+    var name = ($('filename').value || 'bookmarks.html').replace(/[\\/:*?"<>|]/g, '_');
+    if (!/\.html?$/i.test(name)) name += '.html';
+    var blob = new Blob([currentHtml()], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    setMsg($('out-msg'), name + ' を書き出しました', 'ok');
+  });
+
+  $('copy').addEventListener('click', function () {
+    var html = currentHtml();
+    var done = function () { setMsg($('out-msg'), 'HTMLをコピーしました（' + html.length.toLocaleString() + ' 文字）', 'ok'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(html).then(done, function () { fallbackCopy(html, done); });
+    } else {
+      fallbackCopy(html, done);
+    }
+  });
+
+  function fallbackCopy(text, done) {
+    var t = document.createElement('textarea');
+    t.value = text;
+    t.style.position = 'fixed';
+    t.style.opacity = '0';
+    document.body.appendChild(t);
+    t.select();
+    try { document.execCommand('copy'); done(); } catch (e) { setMsg($('out-msg'), 'コピーできませんでした', 'err'); }
+    document.body.removeChild(t);
+  }
+
+  $('reset').addEventListener('click', function () {
+    files = [];
+    state.tree = [];
+    state.formatList = [];
+    $('result').hidden = true;
+    $('filename').value = '';
+    $('ta').value = '';
+    setMsg($('file-msg'), '');
+    setMsg($('text-msg'), '');
+    setMsg($('out-msg'), '');
+  });
+})();
+</script>
+</body>
+</html>
