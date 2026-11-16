@@ -1,9 +1,12 @@
 # bookmarks-to-html
+
 - 分野: web-tool / 状態: active / 後継・前身: なし
 
 ## これは何か
 
-ブラウザのブックマークファイルを、どのブラウザでもインポートできる **Netscape 形式 HTML** に変換する、単一 `index.html` の静的Webツールです。ブックマークの中身がサーバーへ送信されることはありません（全処理をブラウザ内で完結）。
+ブラウザのブックマークファイルを、どのブラウザでもインポートできる **Netscape 形式 HTML** に変換する静的Webツールです。ブックマークの中身がサーバーへ送信されることはありません（全処理をブラウザ内で完結）。
+
+公開版は `index.html`（画面と操作）と `engine.js`（変換エンジン）の2ファイル構成です。`index.html` 1本だけをローカルに保存して使いたい場合は、`engine.js` の中身を `<script>` でインライン化した単一ファイル版を同じフォルダの `index.single.html` として同梱しています。
 
 対応する入力:
 
@@ -42,8 +45,8 @@
 
 ## 状態と今後
 
-- ビルド不要（`index.html` 1本で完結）。`engine.js` は開発用の内製ソースで、`index.html` にインライン済みのため公開には不要です
-- GitHub Pages は **Settings → Pages** で Source を `Deploy from a branch` / Branch `main` / folder `/ (root)` に設定してください（本リポジトリはリモート側で Pages を有効化できませんでした）
+- ビルド不要（`index.html` + `engine.js` の2ファイルで動作）。`engine.js` を `index.html` にインライン化した `index.single.html` は、単独で保存・配布するための版です（Pages の公開対象には含めていません）
+- GitHub Pages は **Settings → Pages** で Source を `Deploy from a branch` / Branch `main` / folder `/ (root)` に設定してください。有効化直後はビルドが数分走るため、URL が 404 になることがあります。**Actions タブ**の `pages-build-deployment` が緑色になっているのを確認してからアクセスしてください
 - 既存ブックマークをその形式のまま再利用したいだけなら、上記のいずれかのブラウザの標準エクスポートでも十分です。本ツールは「別フォーマット同士の相互変換」「複数ファイルのマージ」「重複整理」が主な用途です
 
 ## ライセンス
